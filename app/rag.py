@@ -1,7 +1,16 @@
+import time
+import logging
+import subprocess
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from app.config import TOP_K
-import subprocess
+
+# Basic logger
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 def build_vector_store(documents):
@@ -12,7 +21,16 @@ def build_vector_store(documents):
 
 
 def answer_question(vectorstore, question: str):
+    logger.info(f"Query received: {question}")
+
+    # Retrieval timing
+    t0 = time.time()
     docs = vectorstore.similarity_search(question, k=TOP_K)
+    retrieval_time = time.time() - t0
+
+    logger.info(
+        f"Retrieved {len(docs)} chunks in {retrieval_time:.3f}s"
+    )
 
     context = "\n\n".join(doc.page_content for doc in docs)
 
@@ -28,13 +46,17 @@ Question:
 {question}
 """
 
-    # Call local LLM via Ollama
+    # LLM timing
+    t1 = time.time()
     result = subprocess.run(
         ["ollama", "run", "llama3"],
         input=prompt,
         capture_output=True,
         text=True,
     )
+    llm_time = time.time() - t1
+
+    logger.info(f"LLM response generated in {llm_time:.3f}s")
 
     sources = [
         {
@@ -46,5 +68,10 @@ Question:
 
     return {
         "answer": result.stdout.strip(),
-        "sources": sources
+        "sources": sources,
+        "metrics": {
+            "retrieval_time_sec": round(retrieval_time, 3),
+            "llm_time_sec": round(llm_time, 3),
+            "chunks_used": len(docs),
+        }
     }

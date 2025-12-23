@@ -1,0 +1,55 @@
+"""
+Simple RAG evaluation script.
+
+Checks whether the expected answer is present
+in the retrieved context (Recall@K-style).
+"""
+
+from app.ingest import load_and_split_pdfs
+from app.rag import build_vector_store
+from app.config import TOP_K
+
+
+EVAL_QUESTIONS = [
+    {
+        "question": "What is the document about?",
+        "expected_keyword": "policy",
+    },
+    {
+        "question": "What is the main conclusion?",
+        "expected_keyword": "result",
+    },
+]
+
+
+def evaluate():
+    docs = load_and_split_pdfs("data/docs")
+    vectorstore = build_vector_store(docs)
+
+    hits = 0
+
+    for item in EVAL_QUESTIONS:
+        retrieved = vectorstore.similarity_search(
+            item["question"], k=TOP_K
+        )
+
+        combined_text = " ".join(d.page_content.lower() for d in retrieved)
+
+        if item["expected_keyword"].lower() in combined_text:
+            hits += 1
+            outcome = "HIT"
+        else:
+            outcome = "MISS"
+
+        print(
+            f"Q: {item['question']} | "
+            f"Expected: '{item['expected_keyword']}' | "
+            f"Result: {outcome}"
+        )
+
+    recall = hits / len(EVAL_QUESTIONS)
+    print(f"\nRecall@{TOP_K}: {recall:.2f}")
+
+
+if __name__ == "__main__":
+    evaluate()
