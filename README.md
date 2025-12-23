@@ -1,4 +1,4 @@
-# [WIP] LLM-Powered Knowledge Assistant (RAG)
+# LLM-Powered Knowledge Assistant (RAG)
 
 A production-grade Retrieval-Augmented Generation (RAG) system that allows users
 to query information from multiple documents using a **local LLM**.
